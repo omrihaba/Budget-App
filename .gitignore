@@ -1,0 +1,23 @@
+node_modules/
+.expo/
+dist/
+build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.env
+.env.local
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Not needed for app
+BudgetApp/
+REACT_NATIVE_SETUP.md
+SETUP_INSTRUCTIONS.md
+screenshot.mjs
+screenshots/
