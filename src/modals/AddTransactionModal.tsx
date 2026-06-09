@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView,
@@ -8,26 +8,38 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useColors } from '../constants/colors';
 import { useData } from '../contexts/DataContext';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
+import { INCOME_CATEGORIES } from '../constants/categories';
 import { parseAmount } from '../utils/currency';
 
 interface Props { visible: boolean; onClose: () => void; }
 
-const BLANK = { title: '', amount: '', isIncome: false, category: 'food', notes: '' };
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const BLANK = { title: '', amount: '', isIncome: false, category: '', notes: '' };
 
 export default function AddTransactionModal({ visible, onClose }: Props) {
   const c = useColors();
-  const { addTransaction } = useData();
+  const { addTransaction, customCategories } = useData();
 
-  const [form, setForm]     = useState(BLANK);
-  const [date, setDate]     = useState(new Date());
+  const [form, setForm] = useState(BLANK);
+  const [date, setDate] = useState(new Date());
 
-  const cats      = form.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const expenseCats = customCategories;
+  const incomeCats  = INCOME_CATEGORIES;
+  const cats        = form.isIncome ? incomeCats : expenseCats;
+
+  // Keep selected category valid whenever the list or isIncome changes
+  useEffect(() => {
+    if (cats.length > 0 && !cats.find(c => c.key === form.category)) {
+      setForm(prev => ({ ...prev, category: cats[0].key }));
+    }
+  }, [form.isIncome, customCategories]);
+
   const amountVal = parseAmount(form.amount);
-  const isValid   = form.title.trim().length > 0 && amountVal > 0;
+  const hasCategories = cats.length > 0;
+  const isValid = form.title.trim().length > 0 && amountVal > 0 && hasCategories;
 
   const reset = () => { setForm(BLANK); setDate(new Date()); };
-
   const handleClose = () => { reset(); onClose(); };
 
   const handleSave = async () => {
@@ -52,7 +64,6 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       <SafeAreaView style={[st.safe, { backgroundColor: c.background }]}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
 
-          {/* Header */}
           <View style={[st.header, { borderBottomColor: c.separator }]}>
             <TouchableOpacity onPress={handleClose}>
               <Text style={[st.cancel, { color: c.primary }]}>Cancel</Text>
@@ -71,10 +82,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
                 <TouchableOpacity
                   key={String(val)}
                   style={[st.toggleBtn, form.isIncome === val && { backgroundColor: c.card }]}
-                  onPress={() => {
-                    setField('isIncome', val);
-                    setField('category', val ? 'salary' : 'food');
-                  }}
+                  onPress={() => setField('isIncome', val)}
                 >
                   <Text style={[st.toggleText, {
                     color: form.isIncome === val ? (val ? c.green : c.red) : c.secondaryText,
@@ -125,29 +133,38 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
               />
             </View>
 
-            {/* Category chips */}
+            {/* Category */}
             <View style={[st.field, { backgroundColor: c.card }]}>
               <Text style={[st.label, { color: c.secondaryText }]}>Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-                <View style={st.chips}>
-                  {cats.map(cat => {
-                    const sel = form.category === cat.key;
-                    return (
-                      <TouchableOpacity
-                        key={cat.key}
-                        onPress={() => setField('category', cat.key)}
-                        style={[st.chip, {
-                          borderColor: cat.color,
-                          backgroundColor: sel ? cat.color + '22' : 'transparent',
-                        }]}
-                      >
-                        <Ionicons name={cat.icon} size={13} color={cat.color} />
-                        <Text style={[st.chipText, { color: cat.color }]}>{cat.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+              {!form.isIncome && expenseCats.length === 0 ? (
+                <View style={st.noCatsWrap}>
+                  <Ionicons name="bar-chart-outline" size={20} color={c.secondaryText} />
+                  <Text style={[st.noCatsText, { color: c.secondaryText }]}>
+                    No categories yet — create some in the Budget tab first.
+                  </Text>
                 </View>
-              </ScrollView>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
+                  <View style={st.chips}>
+                    {cats.map(cat => {
+                      const sel = form.category === cat.key;
+                      return (
+                        <TouchableOpacity
+                          key={cat.key}
+                          onPress={() => setField('category', cat.key)}
+                          style={[st.chip, {
+                            borderColor: cat.color,
+                            backgroundColor: sel ? cat.color + '22' : 'transparent',
+                          }]}
+                        >
+                          <Ionicons name={cat.icon as IconName} size={13} color={cat.color} />
+                          <Text style={[st.chipText, { color: cat.color }]}>{cat.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
             {/* Notes */}
@@ -191,4 +208,6 @@ const st = StyleSheet.create({
   chip:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 11,
                 paddingVertical: 6, borderRadius: 20, borderWidth: 1.5 },
   chipText:   { fontSize: 12, fontWeight: '500' },
+  noCatsWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  noCatsText: { flex: 1, fontSize: 13, lineHeight: 18 },
 });

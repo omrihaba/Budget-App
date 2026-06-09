@@ -7,7 +7,7 @@ import DashboardScreen   from '../screens/DashboardScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import BillsScreen       from '../screens/BillsScreen';
 import GoalsScreen       from '../screens/GoalsScreen';
-import WalletScreen      from '../screens/WalletScreen';
+import BudgetScreen      from '../screens/BudgetScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,7 +18,7 @@ const TAB_ICONS: Record<string, [IconName, IconName]> = {
   Transactions: ['receipt',      'receipt-outline'],
   Bills:        ['calendar',     'calendar-outline'],
   Goals:        ['flag',         'flag-outline'],
-  Wallet:       ['wallet',       'wallet-outline'],
+  Budget:       ['bar-chart',    'bar-chart-outline'],
 };
 
 export default function TabNavigator() {
@@ -45,7 +45,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Transactions" component={TransactionsScreen}  />
       <Tab.Screen name="Bills"        component={BillsScreen}         />
       <Tab.Screen name="Goals"        component={GoalsScreen}         />
-      <Tab.Screen name="Wallet"       component={WalletScreen}        />
+      <Tab.Screen name="Budget"       component={BudgetScreen}        />
     </Tab.Navigator>
   );
 }

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { CustomCategory } from '../types';
 
 export interface Category {
   key: string;
@@ -27,7 +28,9 @@ export const CATEGORIES: Category[] = [
   { key: 'other',         label: 'Other',         icon: 'ellipsis-horizontal', color: '#8E8E93', isIncome: false },
 ];
 
-export function getCategoryByKey(key: string): Category {
+export function getCategoryByKey(key: string, custom: CustomCategory[] = []): Category {
+  const customMatch = custom.find(c => c.key === key);
+  if (customMatch) return { ...customMatch, icon: customMatch.icon as keyof typeof Ionicons.glyphMap };
   return CATEGORIES.find(c => c.key === key) ?? CATEGORIES[CATEGORIES.length - 1];
 }
 
@@ -39,3 +42,14 @@ export const INCOME_CATEGORIES: Category[] = [
   ...CATEGORIES.filter(c => c.isIncome),
   CATEGORIES.find(c => c.key === 'other')!,
 ];
+
+export function getAllExpenseCategories(custom: CustomCategory[]): Category[] {
+  const customExpense = custom
+    .filter(c => !c.isIncome)
+    .map(c => ({ ...c, icon: c.icon as keyof typeof Ionicons.glyphMap }));
+  return [...EXPENSE_CATEGORIES, ...customExpense];
+}
+
+export function getAllIncomeCategories(_custom: CustomCategory[]): Category[] {
+  return INCOME_CATEGORIES;
+}

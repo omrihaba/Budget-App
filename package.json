@@ -33,6 +33,7 @@
     "@babel/core": "^7.24.0",
     "@types/react": "~19.1.10",
     "playwright": "^1.60.0",
+    "qrcode": "^1.5.4",
     "typescript": "~5.9.2"
   },
   "private": true

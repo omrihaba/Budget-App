@@ -1,45 +1,68 @@
-import * as SQLite from 'expo-sqlite';
-import { Transaction, Bill, SavingsGoal } from '../types';
+import { Platform } from 'react-native';
+import { Transaction, Bill, SavingsGoal, CategoryBudget, CustomCategory } from '../types';
 
-let _db: SQLite.SQLiteDatabase | null = null;
+// expo-sqlite is native-only — use dynamic require so the module doesn't
+// crash at import time when running in a browser (web preview).
+let _SQLite: any = null;
+function getSQLite() {
+  if (_SQLite) return _SQLite;
+  if (Platform.OS === 'web') throw new Error('SQLite not available on web');
+  _SQLite = require('expo-sqlite');
+  return _SQLite;
+}
 
-async function db(): Promise<SQLite.SQLiteDatabase> {
-  if (!_db) {
-    _db = await SQLite.openDatabaseAsync('budget.db');
-    await _db.execAsync(`
-      PRAGMA journal_mode = WAL;
+let _db: any = null;
 
-      CREATE TABLE IF NOT EXISTS transactions (
-        id           TEXT PRIMARY KEY NOT NULL,
-        title        TEXT NOT NULL,
-        amount       REAL NOT NULL DEFAULT 0,
-        is_income    INTEGER NOT NULL DEFAULT 0,
-        category     TEXT NOT NULL DEFAULT 'other',
-        date         TEXT NOT NULL,
-        notes        TEXT NOT NULL DEFAULT ''
-      );
+async function db(): Promise<any> {
+  if (_db) return _db;
+  const SQLite = getSQLite();
+  _db = await SQLite.openDatabaseAsync('budget.db');
+  await _db.execAsync(`
+    PRAGMA journal_mode = WAL;
 
-      CREATE TABLE IF NOT EXISTS bills (
-        id              TEXT PRIMARY KEY NOT NULL,
-        title           TEXT NOT NULL,
-        amount          REAL NOT NULL DEFAULT 0,
-        due_date        TEXT NOT NULL,
-        recurrence      TEXT NOT NULL DEFAULT 'monthly',
-        is_paid         INTEGER NOT NULL DEFAULT 0,
-        notes           TEXT NOT NULL DEFAULT '',
-        notification_id TEXT NOT NULL DEFAULT ''
-      );
+    CREATE TABLE IF NOT EXISTS transactions (
+      id           TEXT PRIMARY KEY NOT NULL,
+      title        TEXT NOT NULL,
+      amount       REAL NOT NULL DEFAULT 0,
+      is_income    INTEGER NOT NULL DEFAULT 0,
+      category     TEXT NOT NULL DEFAULT 'other',
+      date         TEXT NOT NULL,
+      notes        TEXT NOT NULL DEFAULT ''
+    );
 
-      CREATE TABLE IF NOT EXISTS savings_goals (
-        id            TEXT PRIMARY KEY NOT NULL,
-        title         TEXT NOT NULL,
-        target_amount REAL NOT NULL DEFAULT 0,
-        saved_amount  REAL NOT NULL DEFAULT 0,
-        deadline      TEXT NOT NULL,
-        notes         TEXT NOT NULL DEFAULT ''
-      );
-    `);
-  }
+    CREATE TABLE IF NOT EXISTS bills (
+      id              TEXT PRIMARY KEY NOT NULL,
+      title           TEXT NOT NULL,
+      amount          REAL NOT NULL DEFAULT 0,
+      due_date        TEXT NOT NULL,
+      recurrence      TEXT NOT NULL DEFAULT 'monthly',
+      is_paid         INTEGER NOT NULL DEFAULT 0,
+      notes           TEXT NOT NULL DEFAULT '',
+      notification_id TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS savings_goals (
+      id            TEXT PRIMARY KEY NOT NULL,
+      title         TEXT NOT NULL,
+      target_amount REAL NOT NULL DEFAULT 0,
+      saved_amount  REAL NOT NULL DEFAULT 0,
+      deadline      TEXT NOT NULL,
+      notes         TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS category_budgets (
+      category      TEXT PRIMARY KEY NOT NULL,
+      monthly_limit REAL NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS custom_categories (
+      key       TEXT PRIMARY KEY NOT NULL,
+      label     TEXT NOT NULL,
+      icon      TEXT NOT NULL,
+      color     TEXT NOT NULL,
+      is_income INTEGER NOT NULL DEFAULT 0
+    );
+  `);
   return _db;
 }
 
@@ -51,10 +74,10 @@ function uid(): string {
 
 export async function fetchTransactions(): Promise<Transaction[]> {
   const d = await db();
-  const rows = await d.getAllAsync<any>(
+  const rows = await d.getAllAsync(
     'SELECT * FROM transactions ORDER BY date DESC, rowid DESC'
   );
-  return rows.map(r => ({
+  return rows.map((r: any) => ({
     id: r.id, title: r.title, amount: r.amount,
     isIncome: r.is_income === 1, category: r.category,
     date: r.date, notes: r.notes,
@@ -80,10 +103,10 @@ export async function removeTransaction(id: string): Promise<void> {
 
 export async function fetchBills(): Promise<Bill[]> {
   const d = await db();
-  const rows = await d.getAllAsync<any>(
+  const rows = await d.getAllAsync(
     'SELECT * FROM bills ORDER BY due_date ASC'
   );
-  return rows.map(r => ({
+  return rows.map((r: any) => ({
     id: r.id, title: r.title, amount: r.amount,
     dueDate: r.due_date, recurrence: r.recurrence,
     isPaid: r.is_paid === 1, notes: r.notes,
@@ -115,10 +138,10 @@ export async function removeBill(id: string): Promise<void> {
 
 export async function fetchGoals(): Promise<SavingsGoal[]> {
   const d = await db();
-  const rows = await d.getAllAsync<any>(
+  const rows = await d.getAllAsync(
     'SELECT * FROM savings_goals ORDER BY deadline ASC'
   );
-  return rows.map(r => ({
+  return rows.map((r: any) => ({
     id: r.id, title: r.title,
     targetAmount: r.target_amount, savedAmount: r.saved_amount,
     deadline: r.deadline, notes: r.notes,
@@ -143,4 +166,49 @@ export async function updateGoalSaved(id: string, savedAmount: number): Promise<
 export async function removeGoal(id: string): Promise<void> {
   const d = await db();
   await d.runAsync('DELETE FROM savings_goals WHERE id = ?', [id]);
+}
+
+// ── Category Budgets ──────────────────────────────────────────────────────────
+
+export async function fetchBudgets(): Promise<CategoryBudget[]> {
+  const d = await db();
+  const rows = await d.getAllAsync('SELECT * FROM category_budgets');
+  return rows.map((r: any) => ({ category: r.category, monthlyLimit: r.monthly_limit }));
+}
+
+export async function upsertBudget(category: string, monthlyLimit: number): Promise<void> {
+  const d = await db();
+  await d.runAsync(
+    'INSERT INTO category_budgets (category, monthly_limit) VALUES (?, ?) ON CONFLICT(category) DO UPDATE SET monthly_limit = excluded.monthly_limit',
+    [category, monthlyLimit]
+  );
+}
+
+export async function removeBudget(category: string): Promise<void> {
+  const d = await db();
+  await d.runAsync('DELETE FROM category_budgets WHERE category = ?', [category]);
+}
+
+// ── Custom Categories ─────────────────────────────────────────────────────────
+
+export async function fetchCustomCategories(): Promise<CustomCategory[]> {
+  const d = await db();
+  const rows = await d.getAllAsync('SELECT * FROM custom_categories');
+  return rows.map((r: any) => ({
+    key: r.key, label: r.label, icon: r.icon, color: r.color,
+    isIncome: r.is_income === 1,
+  }));
+}
+
+export async function insertCustomCategory(cat: CustomCategory): Promise<void> {
+  const d = await db();
+  await d.runAsync(
+    'INSERT INTO custom_categories (key, label, icon, color, is_income) VALUES (?, ?, ?, ?, ?)',
+    [cat.key, cat.label, cat.icon, cat.color, cat.isIncome ? 1 : 0]
+  );
+}
+
+export async function removeCustomCategory(key: string): Promise<void> {
+  const d = await db();
+  await d.runAsync('DELETE FROM custom_categories WHERE key = ?', [key]);
 }

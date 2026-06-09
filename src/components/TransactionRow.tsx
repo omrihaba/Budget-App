@@ -14,8 +14,8 @@ interface Props {
 
 export default function TransactionRow({ transaction: tx, showDelete = false }: Props) {
   const c = useColors();
-  const { deleteTransaction } = useData();
-  const cat = getCategoryByKey(tx.category);
+  const { deleteTransaction, customCategories } = useData();
+  const cat = getCategoryByKey(tx.category, customCategories);
 
   const confirmDelete = () =>
     Alert.alert('Delete Transaction', `Delete "${tx.title}"?`, [

@@ -8,13 +8,14 @@ interface Props {
   balance: number;
   income: number;
   expenses: number;
+  label?: string;
 }
 
-export default function BalanceCard({ balance, income, expenses }: Props) {
+export default function BalanceCard({ balance, income, expenses, label = 'Total Balance' }: Props) {
   const c = useColors();
   return (
     <View style={[s.card, { backgroundColor: c.card }]}>
-      <Text style={[s.label, { color: c.secondaryText }]}>Total Balance</Text>
+      <Text style={[s.label, { color: c.secondaryText }]}>{label}</Text>
       <Text style={[s.balance, { color: balance >= 0 ? c.text : c.red }]}>
         {formatILS(balance)}
       </Text>

@@ -27,3 +27,16 @@ export interface SavingsGoal {
   deadline: string; // "YYYY-MM-DD"
   notes: string;
 }
+
+export interface CategoryBudget {
+  category: string;
+  monthlyLimit: number;
+}
+
+export interface CustomCategory {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  isIncome: boolean;
+}

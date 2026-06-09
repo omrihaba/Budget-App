@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { Transaction, Bill, SavingsGoal } from '../types';
+import { Transaction, Bill, SavingsGoal, CategoryBudget, CustomCategory } from '../types';
 import * as db from '../database/db';
 import { cancelReminder } from '../utils/notifications';
 
@@ -7,6 +7,8 @@ interface DataContextValue {
   transactions: Transaction[];
   bills: Bill[];
   goals: SavingsGoal[];
+  budgets: CategoryBudget[];
+  customCategories: CustomCategory[];
   isLoading: boolean;
   addTransaction: (data: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -16,6 +18,10 @@ interface DataContextValue {
   addGoal: (data: Omit<SavingsGoal, 'id'>) => Promise<void>;
   addFunds: (id: string, amount: number, current: number, target: number) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
+  setBudget: (category: string, monthlyLimit: number) => Promise<void>;
+  deleteBudget: (category: string) => Promise<void>;
+  addCustomCategory: (cat: CustomCategory) => Promise<void>;
+  deleteCustomCategory: (key: string) => Promise<void>;
 }
 
 const Ctx = createContext<DataContextValue | null>(null);
@@ -24,19 +30,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bills, setBills]               = useState<Bill[]>([]);
   const [goals, setGoals]               = useState<SavingsGoal[]>([]);
-  const [isLoading, setIsLoading]       = useState(true);
+  const [budgets, setBudgets]               = useState<CategoryBudget[]>([]);
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [isLoading, setIsLoading]           = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [txs, bs, gs] = await Promise.all([
+        const [txs, bs, gs, bgs, ccs] = await Promise.all([
           db.fetchTransactions(),
           db.fetchBills(),
           db.fetchGoals(),
+          db.fetchBudgets(),
+          db.fetchCustomCategories(),
         ]);
         setTransactions(txs);
         setBills(bs);
         setGoals(gs);
+        setBudgets(bgs);
+        setCustomCategories(ccs);
       } catch (e) {
         // expo-sqlite is not available in browser (web preview) — show empty state
         console.warn('DB unavailable (web only):', e);
@@ -103,12 +115,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setGoals(prev => prev.filter(g => g.id !== id));
   }, []);
 
+  const setBudget = useCallback(async (category: string, monthlyLimit: number) => {
+    try { await db.upsertBudget(category, monthlyLimit); } catch {}
+    setBudgets(prev => {
+      const exists = prev.find(b => b.category === category);
+      if (exists) return prev.map(b => b.category === category ? { ...b, monthlyLimit } : b);
+      return [...prev, { category, monthlyLimit }];
+    });
+  }, []);
+
+  const deleteBudget = useCallback(async (category: string) => {
+    try { await db.removeBudget(category); } catch {}
+    setBudgets(prev => prev.filter(b => b.category !== category));
+  }, []);
+
+  const addCustomCategory = useCallback(async (cat: CustomCategory) => {
+    try { await db.insertCustomCategory(cat); } catch {}
+    setCustomCategories(prev => [...prev, cat]);
+  }, []);
+
+  const deleteCustomCategory = useCallback(async (key: string) => {
+    try { await db.removeCustomCategory(key); } catch {}
+    setCustomCategories(prev => prev.filter(c => c.key !== key));
+  }, []);
+
   return (
     <Ctx.Provider value={{
-      transactions, bills, goals, isLoading,
+      transactions, bills, goals, budgets, customCategories, isLoading,
       addTransaction, deleteTransaction,
       addBill, toggleBillPaid, deleteBill,
       addGoal, addFunds, deleteGoal,
+      setBudget, deleteBudget,
+      addCustomCategory, deleteCustomCategory,
     }}>
       {children}
     </Ctx.Provider>
