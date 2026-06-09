@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, SafeAreaView, TouchableOpacity,
   Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform,
@@ -7,8 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../constants/colors';
 import { useData } from '../contexts/DataContext';
 import { formatILS } from '../utils/currency';
-import { inBudgetPeriod, getBudgetPeriodLabel } from '../utils/budgetPeriod';
+import { inBudgetPeriod, billInBudgetPeriod, getBudgetPeriodLabel } from '../utils/budgetPeriod';
 import { CustomCategory } from '../types';
+import FadeInView from '../components/FadeInView';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -45,6 +47,9 @@ export default function BudgetScreen() {
   const { transactions, bills, budgets, setBudget, deleteBudget, customCategories, addCustomCategory, deleteCustomCategory } = useData();
   const now = new Date();
 
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(useCallback(() => { setFocusTick(t => t + 1); }, []));
+
   const [limitModal, setLimitModal] = useState(false);
   const [selectedKey, setSelectedKey] = useState('');
   const [limitInput, setLimitInput] = useState('');
@@ -74,7 +79,7 @@ export default function BudgetScreen() {
   );
 
   const monthlyBillsTotal = useMemo(
-    () => bills.filter(b => inBudgetPeriod(b.dueDate, now)).reduce((s, b) => s + b.amount, 0),
+    () => bills.filter(b => billInBudgetPeriod(b, now)).reduce((s, b) => s + b.amount, 0),
     [bills]
   );
 
@@ -154,8 +159,8 @@ export default function BudgetScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: c.background }]}>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[s.heading, { color: c.text }]}>Budget</Text>
-        <Text style={[s.subheading, { color: c.secondaryText }]}>{monthLabel}</Text>
+        <Text style={[s.heading, { color: c.text, textAlign: 'center' }]}>Budget</Text>
+        <Text style={[s.subheading, { color: c.secondaryText, textAlign: 'center' }]}>{monthLabel}</Text>
 
         {/* ── Monthly Total card ── */}
         <TouchableOpacity
@@ -214,7 +219,7 @@ export default function BudgetScreen() {
           </View>
         ) : (
           <View style={[s.card, { backgroundColor: c.card }]}>
-            {customCategories.map((cat, i) => {
+            {customCategories.map((cat, i) => { const _delay = i * 150;
               const spent = spendingByCategory[cat.key] ?? 0;
               const limit = budgetMap[cat.key];
               const hasLimit = limit != null && limit > 0;
@@ -225,7 +230,7 @@ export default function BudgetScreen() {
               const barColor = isOver ? c.red : isWarning ? c.orange : cat.color;
 
               return (
-                <View key={cat.key}>
+                <FadeInView key={`${cat.key}-${focusTick}`} delay={_delay}>
                   {i > 0 && <View style={[s.sep, { backgroundColor: c.separator }]} />}
                   <TouchableOpacity style={s.row} onPress={() => openLimitModal(cat.key)} activeOpacity={0.7}>
                     <View style={[s.iconWrap, { backgroundColor: cat.color + '22' }]}>
@@ -262,7 +267,7 @@ export default function BudgetScreen() {
                       )}
                     </View>
                   </TouchableOpacity>
-                </View>
+                </FadeInView>
               );
             })}
           </View>

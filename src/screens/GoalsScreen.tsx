@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, TouchableOpacity, FlatList,
   StyleSheet, SafeAreaView, ActivityIndicator,
@@ -9,24 +10,22 @@ import { useData } from '../contexts/DataContext';
 import GoalCard from '../components/GoalCard';
 import AddGoalModal from '../modals/AddGoalModal';
 import AddFundsModal from '../modals/AddFundsModal';
+import FadeInView from '../components/FadeInView';
 import { SavingsGoal } from '../types';
 
 export default function GoalsScreen() {
   const c = useColors();
   const { goals, isLoading } = useData();
-  const [showAdd, setShowAdd]         = useState(false);
-  const [fundGoal, setFundGoal]       = useState<SavingsGoal | null>(null);
+  const [showAdd, setShowAdd]     = useState(false);
+  const [fundGoal, setFundGoal]   = useState<SavingsGoal | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(useCallback(() => { setFocusTick(t => t + 1); }, []));
 
   if (isLoading) return <ActivityIndicator style={{ flex: 1 }} size="large" color={c.primary} />;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: c.background }]}>
-      <View style={[s.topBar, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-        <Text style={[s.heading, { color: c.text }]}>Savings Goals</Text>
-        <TouchableOpacity onPress={() => setShowAdd(true)} style={s.addBtn}>
-          <Ionicons name="add-circle" size={30} color={c.primary} />
-        </TouchableOpacity>
-      </View>
+      <Text style={[s.heading, { color: c.text }]}>Savings Goals</Text>
 
       {goals.length === 0 ? (
         <View style={s.empty}>
@@ -35,19 +34,15 @@ export default function GoalsScreen() {
           <Text style={[s.emptySub, { color: c.secondaryText }]}>
             Set a target — emergency fund, vacation, new gadget — and track your progress.
           </Text>
-          <TouchableOpacity
-            onPress={() => setShowAdd(true)}
-            style={[s.emptyBtn, { backgroundColor: c.primary }]}
-          >
-            <Text style={s.emptyBtnText}>Create First Goal</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={goals}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <GoalCard goal={item} onAddFunds={g => setFundGoal(g)} />
+          renderItem={({ item, index }) => (
+            <FadeInView key={`${item.id}-${focusTick}`} delay={index * 150}>
+              <GoalCard goal={item} onAddFunds={g => setFundGoal(g)} />
+            </FadeInView>
           )}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
@@ -55,26 +50,33 @@ export default function GoalsScreen() {
         />
       )}
 
+      <View style={[s.bottomBar, { borderTopColor: c.separator }]}>
+        <TouchableOpacity
+          style={[s.addBtn, { backgroundColor: c.card, borderColor: c.primary }]}
+          onPress={() => setShowAdd(true)}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={c.primary} />
+          <Text style={[s.addBtnText, { color: c.primary }]}>New Goal</Text>
+        </TouchableOpacity>
+      </View>
+
       <AddGoalModal visible={showAdd} onClose={() => setShowAdd(false)} />
-      <AddFundsModal
-        goal={fundGoal}
-        onClose={() => setFundGoal(null)}
-      />
+      <AddFundsModal goal={fundGoal} onClose={() => setFundGoal(null)} />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe:        { flex: 1 },
-  topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                 paddingHorizontal: 16, paddingVertical: 12,
-                 borderBottomWidth: StyleSheet.hairlineWidth },
-  heading:     { fontSize: 22, fontWeight: '700' },
-  addBtn:      { padding: 2 },
-  list:        { padding: 16, paddingBottom: 32 },
-  empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
-  emptyTitle:  { fontSize: 20, fontWeight: '700' },
-  emptySub:    { fontSize: 14, textAlign: 'center', lineHeight: 21 },
-  emptyBtn:    { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 4 },
-  emptyBtnText:{ color: '#fff', fontSize: 15, fontWeight: '600' },
+  safe:       { flex: 1 },
+  heading:    { fontSize: 24, fontWeight: '700', textAlign: 'center',
+                paddingTop: 12, paddingBottom: 8 },
+  list:       { padding: 16, paddingBottom: 8 },
+  empty:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  emptyTitle: { fontSize: 20, fontWeight: '700' },
+  emptySub:   { fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  bottomBar:  { paddingHorizontal: 16, paddingVertical: 12,
+                borderTopWidth: StyleSheet.hairlineWidth },
+  addBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                gap: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5 },
+  addBtnText: { fontSize: 15, fontWeight: '600' },
 });

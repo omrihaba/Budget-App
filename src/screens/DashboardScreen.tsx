@@ -8,7 +8,7 @@ import { useColors } from '../constants/colors';
 import { useData } from '../contexts/DataContext';
 import { formatILS } from '../utils/currency';
 import { getCategoryByKey } from '../constants/categories';
-import { inBudgetPeriod } from '../utils/budgetPeriod';
+import { inBudgetPeriod, billInBudgetPeriod } from '../utils/budgetPeriod';
 import BalanceCard from '../components/BalanceCard';
 import DonutChart from '../components/DonutChart';
 import TransactionRow from '../components/TransactionRow';
@@ -29,7 +29,7 @@ export default function DashboardScreen() {
   const balance  = useMemo(() => transactions.reduce((s, t) => s + (t.isIncome ? t.amount : -t.amount), 0), [transactions]);
 
   const monthlyBillsTotal = useMemo(
-    () => bills.filter(b => inBudgetPeriod(b.dueDate, now)).reduce((s, b) => s + b.amount, 0),
+    () => bills.filter(b => billInBudgetPeriod(b, now)).reduce((s, b) => s + b.amount, 0),
     [bills]
   );
 
@@ -61,7 +61,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: c.background }]}>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[s.heading, { color: c.text }]}>Dashboard</Text>
+        <Text style={[s.heading, { color: c.text, textAlign: 'center' }]}>Dashboard</Text>
 
         {/* Balance */}
         <BalanceCard

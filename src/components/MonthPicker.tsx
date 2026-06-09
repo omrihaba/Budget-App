@@ -35,21 +35,21 @@ export default function MonthPicker({ selected, onChange }: Props) {
   const label = selected.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
-    <View style={[s.bar, { backgroundColor: c.card, borderBottomColor: c.separator }]}>
-      <TouchableOpacity onPress={prev} style={s.btn} hitSlop={8}>
-        <Ionicons name="chevron-back" size={20} color={c.primary} />
+    <View style={s.row}>
+      <TouchableOpacity onPress={prev} hitSlop={12} style={s.arrow}>
+        <Ionicons name="chevron-back" size={22} color={c.primary} />
       </TouchableOpacity>
       <Text style={[s.label, { color: c.text }]}>{label}</Text>
-      <TouchableOpacity onPress={next} style={s.btn} hitSlop={8} disabled={atCurrent}>
-        <Ionicons name="chevron-forward" size={20} color={atCurrent ? c.secondaryText : c.primary} />
+      <TouchableOpacity onPress={next} hitSlop={12} style={s.arrow} disabled={atCurrent}>
+        <Ionicons name="chevron-forward" size={22} color={atCurrent ? c.secondaryText : c.primary} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  bar:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-           paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  btn:   { padding: 4 },
-  label: { fontSize: 15, fontWeight: '600' },
+  row:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+           gap: 16, paddingVertical: 10 },
+  arrow: { padding: 4 },
+  label: { fontSize: 16, fontWeight: '600', minWidth: 150, textAlign: 'center' },
 });

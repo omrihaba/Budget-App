@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView,
-  Platform, SafeAreaView,
+  Platform, SafeAreaView, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useColors } from '../constants/colors';
 import { useData } from '../contexts/DataContext';
 import { INCOME_CATEGORIES } from '../constants/categories';
-import { parseAmount } from '../utils/currency';
+import { parseAmount, toLocalDateString } from '../utils/currency';
 
 interface Props { visible: boolean; onClose: () => void; }
 
@@ -39,6 +39,14 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
   const hasCategories = cats.length > 0;
   const isValid = form.title.trim().length > 0 && amountVal > 0 && hasCategories;
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 220, delay: 80, useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
   const reset = () => { setForm(BLANK); setDate(new Date()); };
   const handleClose = () => { reset(); onClose(); };
 
@@ -49,7 +57,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
       amount:   amountVal,
       isIncome: form.isIncome,
       category: form.category,
-      date:     date.toISOString().split('T')[0],
+      date:     toLocalDateString(date),
       notes:    form.notes,
     });
     reset();
@@ -62,6 +70,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={[st.safe, { backgroundColor: c.background }]}>
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
 
           <View style={[st.header, { borderBottomColor: c.separator }]}>
@@ -182,6 +191,7 @@ export default function AddTransactionModal({ visible, onClose }: Props) {
 
           </ScrollView>
         </KeyboardAvoidingView>
+        </Animated.View>
       </SafeAreaView>
     </Modal>
   );

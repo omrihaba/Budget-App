@@ -7,6 +7,14 @@ export function formatILS(amount: number): string {
   return '₪' + formatted;
 }
 
+export function toLocalDateString(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 export function parseAmount(text: string): number {
   const cleaned = text.replace(',', '.').replace(/[^\d.]/g, '');
   const value = parseFloat(cleaned);

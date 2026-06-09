@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView,
-  Platform, SafeAreaView,
+  Platform, SafeAreaView, Animated,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useColors } from '../constants/colors';
 import { useData } from '../contexts/DataContext';
-import { parseAmount } from '../utils/currency';
+import { parseAmount, toLocalDateString } from '../utils/currency';
 
 interface Props { visible: boolean; onClose: () => void; }
 
@@ -31,6 +31,14 @@ export default function AddGoalModal({ visible, onClose }: Props) {
   const savedVal  = parseAmount(saved);
   const isValid   = title.trim().length > 0 && targetVal > 0;
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 220, delay: 80, useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
   const reset = () => {
     setTitle(''); setTarget(''); setSaved('');
     setDeadline(threeMonthsFromNow()); setNotes('');
@@ -44,7 +52,7 @@ export default function AddGoalModal({ visible, onClose }: Props) {
       title:        title.trim(),
       targetAmount: targetVal,
       savedAmount:  Math.min(savedVal, targetVal),
-      deadline:     deadline.toISOString().split('T')[0],
+      deadline:     toLocalDateString(deadline),
       notes,
     });
     reset();
@@ -54,6 +62,7 @@ export default function AddGoalModal({ visible, onClose }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={[st.safe, { backgroundColor: c.background }]}>
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
 
           <View style={[st.header, { borderBottomColor: c.separator }]}>
@@ -139,6 +148,7 @@ export default function AddGoalModal({ visible, onClose }: Props) {
 
           </ScrollView>
         </KeyboardAvoidingView>
+        </Animated.View>
       </SafeAreaView>
     </Modal>
   );
